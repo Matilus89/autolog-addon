@@ -8,7 +8,7 @@ var fs = require('node:fs');
 var path = require('node:path');
 var { DatabaseSync } = require('node:sqlite');
 
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 
 var SCHEMA = `
 CREATE TABLE IF NOT EXISTS vehicles (
@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS fillups (
   fuel_type  TEXT DEFAULT '',
   station    TEXT DEFAULT '',
   location   TEXT DEFAULT '',
+  lat        REAL,
+  lon        REAL,
   payment    TEXT DEFAULT '',
   notes      TEXT DEFAULT ''
 );
@@ -76,9 +78,27 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 `;
 
 /* Migrazioni versionate: mai droppare dati, solo aggiunte idempotenti. */
+/*
+ * Le migrazioni girano anche su un database appena creato, dove SCHEMA ha già
+ * messo tutto: devono quindi essere idempotenti, non "aggiungi e basta".
+ */
+function hasColumn(db, table, name) {
+  var cols = db.prepare('PRAGMA table_info(' + table + ')').all();
+  for (var i = 0; i < cols.length; i++) if (cols[i].name === name) return true;
+  return false;
+}
+function addColumn(db, table, name, decl) {
+  if (!hasColumn(db, table, name)) db.exec('ALTER TABLE ' + table + ' ADD COLUMN ' + name + ' ' + decl);
+}
+
 var MIGRATIONS = [
   /* [0 -> 1] schema iniziale, già coperto da SCHEMA */
-  function (db) { /* no-op */ }
+  function (db) { /* no-op */ },
+  /* [1 -> 2] coordinate del rifornimento, prese dal GPS o importate */
+  function (db) {
+    addColumn(db, 'fillups', 'lat', 'REAL');
+    addColumn(db, 'fillups', 'lon', 'REAL');
+  }
 ];
 
 var COLUMNS = {
@@ -90,7 +110,8 @@ var COLUMNS = {
   fillups: {
     vehicle_id: 'int', date: 'date', odo: 'real', liters: 'real',
     total_cost: 'real', price_l: 'real', full: 'bool', missed: 'bool',
-    fuel_type: 'text', station: 'text', location: 'text', payment: 'text', notes: 'text'
+    fuel_type: 'text', station: 'text', location: 'text',
+    lat: 'real', lon: 'real', payment: 'text', notes: 'text'
   },
   expenses: {
     vehicle_id: 'int', date: 'date', odo: 'real', category: 'text',

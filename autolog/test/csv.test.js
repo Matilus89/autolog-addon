@@ -183,3 +183,44 @@ test('colonna "price" come totale resta un totale', function () {
   assert.strictEqual(r.rows[0].total_cost, 70);
   assert.strictEqual(r.rows[0].price_l, 1.75);
 });
+
+/* ---------- coordinate ---------- */
+
+var CON_COORDINATE = [
+  'fuelup_date,odometer,litres,price,latitude,longitude,brand',
+  '2024-03-18,120000,33.9,2.212,45.4642,9.1900,"Eni"',
+  '2024-03-25,120400,30.0,2.200,,,"Q8"',
+  ''
+].join('\n');
+
+test('import: latitude e longitude finiscono in lat e lon', function () {
+  var r = csv.parseFillupsCSV(CON_COORDINATE, {});
+  assert.strictEqual(r.skipped, 0);
+  assert.strictEqual(r.rows[0].lat, 45.4642);
+  assert.strictEqual(r.rows[0].lon, 9.19);
+  assert.strictEqual(r.rows[1].lat, null, 'celle vuote non inventano una posizione');
+  assert.strictEqual(r.rows[1].lon, null);
+});
+
+test('import: coordinate con la virgola decimale in un CSV italiano', function () {
+  var it = [
+    'data;km;litri;prezzo/litro;latitudine;longitudine',
+    '18/03/2024;120000;33,9;2,212;45,4642;9,19',
+    ''
+  ].join('\n');
+  var r = csv.parseFillupsCSV(it, { dateOrder: 'EU' });
+  assert.strictEqual(r.rows[0].lat, 45.4642);
+  assert.strictEqual(r.rows[0].lon, 9.19);
+});
+
+test('parseCoord: fuori intervallo o illeggibile vale nessuna posizione', function () {
+  assert.strictEqual(csv.parseCoord('45.4642', 90), 45.4642);
+  assert.strictEqual(csv.parseCoord('45,4642', 90), 45.4642);
+  assert.strictEqual(csv.parseCoord('-181', 180), null);
+  assert.strictEqual(csv.parseCoord('91', 90), null);
+  assert.strictEqual(csv.parseCoord('454642', 90), null, 'un punto letto come migliaia esce dall\'intervallo');
+  assert.strictEqual(csv.parseCoord('', 90), null);
+  assert.strictEqual(csv.parseCoord('abc', 90), null);
+  assert.strictEqual(csv.parseCoord(null, 90), null);
+  assert.strictEqual(csv.parseCoord('9.1234567', 180), 9.123457, 'arrotondate al milionesimo, circa 11 cm');
+});

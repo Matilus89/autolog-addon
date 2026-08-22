@@ -110,3 +110,79 @@ test('hook onDataChanged centralizzato (predisposizione FASE 2)', function () {
   DB.onDataChanged(1, 'fillups', 'insert');
   assert.deepStrictEqual(seen, [[1, 'fillups', 'insert']]);
 });
+
+/* ---------- coordinate del rifornimento ---------- */
+
+test('coordinate: salvate come numeri, assenti come null', function () {
+  var db = DB.openMemory();
+  var v = DB.insert(db, 'vehicles', { name: 'Panda' });
+  var conCoord = DB.insert(db, 'fillups', {
+    vehicle_id: v.id, date: '2024-01-01', odo: 1000, liters: 30, total_cost: 54,
+    lat: '45.4642', lon: '9.19'
+  });
+  assert.strictEqual(conCoord.lat, 45.4642);
+  assert.strictEqual(conCoord.lon, 9.19);
+
+  var senza = DB.insert(db, 'fillups', {
+    vehicle_id: v.id, date: '2024-01-05', odo: 1300, liters: 25, total_cost: 45
+  });
+  assert.strictEqual(senza.lat, null, 'un rifornimento senza posizione non ne inventa una');
+  assert.strictEqual(senza.lon, null);
+
+  var vuoto = DB.update(db, 'fillups', conCoord.id, { lat: '', lon: '' });
+  assert.strictEqual(vuoto.lat, null, 'svuotare i campi cancella la posizione');
+  db.close();
+});
+
+test('coordinate: attraversano backup e ripristino', function () {
+  var db = DB.openMemory();
+  var v = DB.insert(db, 'vehicles', { name: 'Panda' });
+  DB.insert(db, 'fillups', {
+    vehicle_id: v.id, date: '2024-01-01', odo: 1000, liters: 30, total_cost: 54,
+    lat: 45.4642, lon: 9.19
+  });
+  var dump = DB.exportAll(db);
+  db.close();
+
+  var db2 = DB.openMemory();
+  DB.importAll(db2, dump, true);
+  var row = DB.list(db2, 'fillups')[0];
+  assert.strictEqual(row.lat, 45.4642);
+  assert.strictEqual(row.lon, 9.19);
+  db2.close();
+});
+
+test('migrazione: un database allo schema 1 riceve lat e lon senza perdere righe', function () {
+  var os = require('node:os'), fs = require('node:fs'), path = require('node:path');
+  var { DatabaseSync } = require('node:sqlite');
+  var dir = fs.mkdtempSync(path.join(os.tmpdir(), 'autolog-migrazione-'));
+
+  var db = DB.open(dir);
+  var v = DB.insert(db, 'vehicles', { name: 'Panda' });
+  DB.insert(db, 'fillups', { vehicle_id: v.id, date: '2024-01-01', odo: 1000, liters: 30, total_cost: 54 });
+  db.close();
+
+  /* si torna indietro allo schema 1: è lo stato di chi aggiorna l'add-on */
+  var raw = new DatabaseSync(path.join(dir, 'autolog.db'));
+  raw.exec('ALTER TABLE fillups DROP COLUMN lat');
+  raw.exec('ALTER TABLE fillups DROP COLUMN lon');
+  raw.exec('PRAGMA user_version = 1');
+  raw.close();
+
+  var db2 = DB.open(dir);
+  var cols = db2.prepare('PRAGMA table_info(fillups)').all().map(function (c) { return c.name; });
+  assert.ok(cols.indexOf('lat') >= 0 && cols.indexOf('lon') >= 0, 'la migrazione aggiunge le colonne');
+  assert.strictEqual(Number(db2.prepare('PRAGMA user_version').get().user_version), DB.SCHEMA_VERSION);
+  var rows = DB.list(db2, 'fillups', v.id);
+  assert.strictEqual(rows.length, 1, 'i rifornimenti già registrati restano');
+  assert.strictEqual(rows[0].odo, 1000);
+  assert.strictEqual(rows[0].lat, null);
+  db2.close();
+
+  /* riaprire di nuovo non deve ritentare la ALTER TABLE */
+  var db3 = DB.open(dir);
+  assert.strictEqual(DB.list(db3, 'fillups', v.id).length, 1);
+  db3.close();
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});

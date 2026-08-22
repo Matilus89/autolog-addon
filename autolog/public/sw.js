@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE_VERSION = 'autolog-v8';
+var CACHE_VERSION = 'autolog-v9';
 
 /* Percorsi relativi allo scope: funzionano anche sotto l'Ingress di HA. */
 var SHELL = [

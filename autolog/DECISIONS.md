@@ -51,6 +51,13 @@ URLs relative).
   of truth.
 - **Rows without a date or an odometer reading are skipped**, counted, and the
   reason is listed in the preview.
+- **Coordinates are read without knowing the language of the file**: a latitude
+  lives between -90 and 90 and carries no thousands separator, so a comma and a
+  dot are both decimal marks with no ambiguity, and `parseCoord` ignores the
+  locale. Out-of-range values are dropped rather than stored: read the Italian
+  way, `45.4642` would become 454642, and an invented position is worse than
+  none. The `latitude`/`longitude` columns of a Fuelio export, ignored until
+  now, are imported.
 
 ## Frontend
 
@@ -90,6 +97,22 @@ URLs relative).
 - **Form warnings wait for half a second of silence.** With the masks every
   intermediate value is out of range — a half-typed price reads as 0.17 — so
   live warnings would flash on every keystroke.
+- **The position of a fuel-up is two `REAL` columns** (`lat`, `lon`), not text
+  inside `location`: the location stays the name of the place, the coordinates
+  stay numbers that survive an export and an import. First real schema
+  migration (`SCHEMA_VERSION` 2): `MIGRATIONS[1]` adds the columns only when
+  they are missing, because migrations also run on a freshly created database
+  where `SCHEMA` has already put them there.
+- **The Locate button stays visible outside a secure context, and explains
+  itself.** The browser geolocation API only exists over https or on localhost,
+  so anyone reaching Home Assistant on a plain http address — a LAN IP, a VPN —
+  does not have it. Hiding the button would suggest the feature does not exist;
+  pressed, it says a secure connection is required. Both fields remain fillable
+  by hand.
+- **No reverse geocoding.** Turning coordinates into the name of a station means
+  sending them to a third party on every capture, and adding a network
+  dependency to an app that works offline. Coordinates are stored, and that is
+  all.
 - **Charts** compute readable axis ticks at runtime and label only the first,
   last, highest and lowest point. The average is drawn as a dashed line and
   labelled in a legend *outside* the plot — inside, it collided with the value

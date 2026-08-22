@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.6.0
+
+- **Every fuel-up can carry its position.** Two coordinate fields and a
+  **Locate** button that asks the browser for the current position. The button
+  only works over a secure connection (`https://`) — that is a browser rule,
+  not an add-on one, and it applies inside a VPN too, because the browser looks
+  at the URL and not at the tunnel. Over `http://` the button says so instead
+  of failing silently, and the two fields can always be filled in by hand.
+- **`latitude` and `longitude` are now imported.** Fuelio exports have always
+  carried those columns and AutoLog used to throw them away. They also go out
+  again in the CSV export and in the JSON backup.
+- Coordinates are read without guessing the file's language: between -90 and 90
+  there are no thousands separators, so a comma and a dot are both decimal
+  marks. Anything outside the valid range is dropped rather than stored — read
+  the Italian way, `45.4642` would become 454642, and an invented position is
+  worse than none.
+- Coordinates outside the valid range raise the same kind of non-blocking
+  warning as the other fields.
+- First real schema migration (`SCHEMA_VERSION` 2). Existing databases get the
+  two columns added in place, with every fuel-up left untouched.
+
 ## 1.5.0
 
 - **Numeric input masks in the fuel-up form.** Digits fill in from the right,

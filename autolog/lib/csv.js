@@ -118,6 +118,22 @@ function parseNumber(raw, locale) {
   return neg ? -n : n;
 }
 
+/*
+ * Le coordinate non hanno separatore delle migliaia — una latitudine sta fra
+ * -90 e 90 — quindi qui la virgola e il punto sono senza ambiguità entrambi
+ * decimali, e non serve sapere in che lingua è scritto il file. Fuori
+ * intervallo si scarta: meglio nessuna posizione che una posizione inventata
+ * da un'interpretazione sbagliata delle cifre.
+ */
+function parseCoord(raw, max) {
+  if (raw === null || raw === undefined) return null;
+  var s = String(raw).trim().replace(/\s/g, '').replace(',', '.');
+  if (!s) return null;
+  var n = Number(s);
+  if (!Number.isFinite(n) || n < -max || n > max) return null;
+  return Math.round(n * 1e6) / 1e6;
+}
+
 /* Il separatore del file rivela la convenzione numerica: "," -> EN, ";" -> IT. */
 function localeFromDelimiter(d) {
   return d === ',' ? 'en' : 'it';
@@ -187,6 +203,8 @@ var ALIASES = {
   missed: ['missedfuelup', 'missed', 'nonregistrato', 'saltato'],
   station: ['gasbrand', 'brand', 'distributore', 'station', 'gasstation', 'marca'],
   location: ['location', 'luogo', 'city', 'citta', 'place', 'indirizzo'],
+  lat: ['latitude', 'lat', 'latitudine'],
+  lon: ['longitude', 'lon', 'lng', 'longitudine'],
   payment: ['paymenttype', 'payment', 'pagamento', 'metodopagamento'],
   fuel_type: ['octane', 'typeoffuel', 'fueltype', 'carburante', 'tipocarburante'],
   notes: ['notes', 'note', 'comment', 'comments', 'commenti'],
@@ -305,6 +323,8 @@ function parseFillupsCSV(text, opts) {
       fuel_type: String(get('fuel_type') || '').trim(),
       station: String(get('station') || '').trim(),
       location: String(get('location') || '').trim(),
+      lat: parseCoord(get('lat'), 90),
+      lon: parseCoord(get('lon'), 180),
       payment: String(get('payment') || '').trim(),
       notes: String(get('notes') || '').trim()
     });
@@ -357,6 +377,7 @@ module.exports = {
   GAL_TO_L: GAL_TO_L,
   parseCSV: parseCSV,
   toCSV: toCSV,
+  parseCoord: parseCoord,
   parseNumber: parseNumber,
   localeFromDelimiter: localeFromDelimiter,
   parseDate: parseDate,

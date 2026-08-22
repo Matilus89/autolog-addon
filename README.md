@@ -16,6 +16,8 @@ replacement for Fuelly that lives in your own house.
 - Charts for consumption, fuel price, spending by category and monthly costs
 - CSV import from **Fuelly** (verified against a real export), plus Fuelio and
   Drivvo column mappings; CSV export and JSON backup
+- Optional **position for each fuel-up**, from the device GPS over https or
+  from the `latitude`/`longitude` columns of an import
 - **One Home Assistant device per vehicle**, with ten long-term-statistics sensors
 - Served in the sidebar through Ingress, visible to non-admin users too
 - Installable as a PWA on your phone
@@ -155,12 +157,12 @@ The reasoning behind the non-obvious choices is recorded in
 cd autolog && npm test
 ```
 
-94 tests covering the consumption maths (partial fills, broken chains,
+100 tests covering the consumption maths (partial fills, broken chains,
 weighted average, non-increasing odometer, division by zero), the CSV parser
-(Fuelly in miles and US gallons, Fuelio, Italian CSV, malformed rows), the
-JSON export/import round-trip, the numeric input masks, MQTT packet encoding
-including packets split across TCP chunks, and the full publisher flow against
-a stub broker.
+(Fuelly in miles and US gallons, Fuelio, Italian CSV, malformed rows,
+coordinates), the JSON export/import round-trip, the schema migration, the
+numeric input masks, MQTT packet encoding including packets split across TCP
+chunks, and the full publisher flow against a stub broker.
 
 ## Scope
 

@@ -955,6 +955,10 @@
       }));
     }
     if (date && date > todayISO()) w.push(t('warn.futureDate'));
+    var lat = numIn(getVal('f-lat')), lon = numIn(getVal('f-lon'));
+    if ((lat !== null && (lat < -90 || lat > 90)) || (lon !== null && (lon < -180 || lon > 180))) {
+      w.push(t('warn.coordsRange'));
+    }
     var ul = $('#f-warnings');
     ul.textContent = '';
     w.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
@@ -996,6 +1000,35 @@
     fillupWarningsSoon();
   }
 
+  /*
+   * Coordinate dal GPS del telefono. L'API del browser esiste solo in contesto
+   * sicuro: su https c'è, su un indirizzo http della rete locale o di una VPN
+   * no. Il tasto resta comunque al suo posto e lo dice: sparire lascerebbe
+   * l'impressione che la funzione non ci sia. I campi si compilano a mano.
+   */
+  function initLocate() {
+    var btn = $('#f-locate');
+    if (!btn) return;
+    if (!navigator.geolocation) { btn.hidden = true; return; }
+    btn.addEventListener('click', function () {
+      if (!window.isSecureContext) return toast(t('msg.locateInsecure'));
+      btn.disabled = true;
+      btn.textContent = t('action.locating');
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        setVal('f-lat', round(pos.coords.latitude, 6));
+        setVal('f-lon', round(pos.coords.longitude, 6));
+        btn.disabled = false;
+        btn.textContent = t('action.locate');
+        toast(t('msg.located', { v: nfmt(Math.round(pos.coords.accuracy), 0) }));
+        fillupWarnings();
+      }, function (err) {
+        btn.disabled = false;
+        btn.textContent = t('action.locate');
+        toast(t(err && err.code === 1 ? 'msg.locateDenied' : 'msg.locateFailed'));
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+    });
+  }
+
   function openFillup(f) {
     if (!state.vehicleId) return toast(t('msg.needVehicle'));
     editingFillup = f || null;
@@ -1013,6 +1046,8 @@
     setVal('f-fuel', f ? f.fuel_type : (v ? v.fuel_type : ''));
     setVal('f-station', f ? f.station : '');
     setVal('f-location', f ? f.location : '');
+    setVal('f-lat', f ? round(f.lat, 6) : '');
+    setVal('f-lon', f ? round(f.lon, 6) : '');
     setVal('f-notes', f ? f.notes : '');
     $('#dlg-fillup [data-action="delete"]').hidden = !f;
     odoHint();
@@ -1034,6 +1069,8 @@
       fuel_type: getVal('f-fuel'),
       station: getVal('f-station'),
       location: getVal('f-location'),
+      lat: numIn(getVal('f-lat')),
+      lon: numIn(getVal('f-lon')),
       notes: getVal('f-notes')
     };
     if (!body.date || body.odo === null || !body.liters) return toast(t('msg.requiredFillup'));
@@ -1270,6 +1307,10 @@
       fillupWarningsSoon();
     });
     document.getElementById('f-date').addEventListener('input', fillupWarningsSoon);
+    ['f-lat', 'f-lon'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', fillupWarningsSoon);
+    });
+    initLocate();
 
     $('#login-form').addEventListener('submit', async function (ev) {
       ev.preventDefault();

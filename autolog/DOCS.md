@@ -102,6 +102,18 @@ data:
 
 Omit `date` and today is used. Handy with an NFC tag stuck on the filler flap.
 
+## The position of a fuel-up
+
+The form has two coordinate fields and a **Locate** button that takes the
+position from the device's GPS. The button only works when you reach Home
+Assistant over a secure connection (`https://`): that is a browser rule, not an
+add-on one, and it holds inside a VPN too, because the browser looks at the URL
+and not at the tunnel. Over `http://` the button says so instead of failing
+silently, and both fields remain fillable by hand.
+
+The `latitude` and `longitude` columns of a Fuelio export are imported, and
+coordinates go out again in the CSV export and in the JSON backup.
+
 ## Backups
 
 The add-on is included in Home Assistant backups. On top of that, **Dati →

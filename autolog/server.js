@@ -31,7 +31,7 @@ var HASS = require('./lib/hass.js');
 var I18N = require('./public/i18n.js');
 var UNITS = require('./lib/units.js');
 
-var VERSION = '1.5.0';
+var VERSION = '1.6.0';
 
 /* --- configurazione --- */
 var PORT = Number(process.env.PORT || 8099);
@@ -425,7 +425,7 @@ async function handleApi(req, res, url) {
     if (!evid) return H.error(res, 400, 'Parametro vehicle obbligatorio');
     var veh2 = vehicleOr404(res, Number(evid)); if (!veh2) return;
     var cols = type === 'fillups'
-      ? ['date', 'odo', 'liters', 'total_cost', 'price_l', 'full', 'missed', 'fuel_type', 'station', 'location', 'payment', 'notes']
+      ? ['date', 'odo', 'liters', 'total_cost', 'price_l', 'full', 'missed', 'fuel_type', 'station', 'location', 'lat', 'lon', 'payment', 'notes']
       : ['date', 'odo', 'category', 'description', 'cost', 'vendor', 'notes'];
     var rows2 = DB.list(db, type, Number(evid), 'date ASC, id ASC');
     var csvText = csvlib.toCSV(cols, rows2, ',');

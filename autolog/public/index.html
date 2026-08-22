@@ -75,6 +75,14 @@
       <p class="field"><label for="f-station" data-i18n="field.station">Distributore</label><input id="f-station" name="station" type="text"></p>
       <p class="field"><label for="f-location" data-i18n="field.location">Luogo</label><input id="f-location" name="location" type="text"></p>
     </div>
+    <p class="field">
+      <label for="f-lat" data-i18n="field.coords">Posizione (lat, lon)</label>
+      <span class="coords">
+        <input id="f-lat" name="lat" type="text" inputmode="decimal" data-i18n-placeholder="field.lat" placeholder="Latitudine" data-i18n-aria-label="field.lat" aria-label="Latitudine">
+        <input id="f-lon" name="lon" type="text" inputmode="decimal" data-i18n-placeholder="field.lon" placeholder="Longitudine" data-i18n-aria-label="field.lon" aria-label="Longitudine">
+        <button type="button" id="f-locate" class="btn small" data-i18n="action.locate">Rileva</button>
+      </span>
+    </p>
     <p class="field"><label for="f-notes" data-i18n="field.notes">Note</label><input id="f-notes" name="notes" type="text"></p>
     <ul id="f-warnings" class="warnings" role="status"></ul>
     <div class="actions">
