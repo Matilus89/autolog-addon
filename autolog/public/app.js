@@ -10,6 +10,7 @@
   var CH = window.AutoLogCharts;
   var I = window.AutoLogI18n;
   var U = window.AutoLogUnits;
+  var M = window.AutoLogMask;
   var t = I.t;
 
   /* Impostazioni di unità correnti; il database resta sempre metrico. */
@@ -54,11 +55,18 @@
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  /*
+   * Separatore decimale della lingua corrente: è quello che l'utente si aspetta
+   * di vedere nei campi. In lettura numIn() li accetta comunque entrambi.
+   */
+  function decSep() {
+    try { return (1.1).toLocaleString(I.intlTag()).charAt(1); } catch (e) { return ','; }
+  }
   /* Accetta la virgola decimale italiana nei campi numerici. */
   function round(n, d) {
     if (n === null || n === undefined || !isFinite(n)) return '';
     var f = Math.pow(10, d);
-    return String(Math.round(n * f) / f).replace('.', ',');
+    return String(Math.round(n * f) / f).replace('.', decSep());
   }
   function numIn(v) {
     if (v === null || v === undefined) return null;
@@ -868,6 +876,64 @@
 
   var editingFillup = null;
 
+  /*
+   * Campi a maschera: le cifre entrano da destra con i decimali fissi, così su
+   * tastiera numerica un prezzo si scrive senza cercare la virgola. Il volume
+   * ne tiene tre come il prezzo: i rifornimenti importati da Fuelio hanno il
+   * millesimo di litro e il campo deve poterli riscrivere tali e quali.
+   */
+  var MASKED = { 'f-liters': 3, 'f-cost': 2, 'f-price': 3 };
+
+  function maskField(el) {
+    var v = M.decimals(el.value, MASKED[el.id], decSep());
+    if (v === el.value) return;
+    el.value = v;
+    /* Il cursore torna in fondo: le cifre si spostano tutte a ogni tasto. */
+    try { el.setSelectionRange(v.length, v.length); } catch (e) { /* niente selezione */ }
+  }
+  function maskSet(id, n) { setVal(id, M.format(n, MASKED[id], decSep())); }
+
+  /*
+   * Il rifornimento precedente a quello in corso di inserimento o modifica.
+   * Serve al suggerimento sotto il campo dei chilometri: modificando un vecchio
+   * rifornimento il riferimento non è l'ultimo in assoluto, è quello prima.
+   */
+  function prevFillup() {
+    var limit = editingFillup ? editingFillup.odo : Infinity;
+    var best = null;
+    state.fillups.forEach(function (f) {
+      if (editingFillup && f.id === editingFillup.id) return;
+      if (f.odo <= limit && (best === null || f.odo > best.odo)) best = f;
+    });
+    return best;
+  }
+
+  /*
+   * Sotto il campo dei chilometri: quanto segnava il contachilometri l'ultima
+   * volta e, appena si digita, quanti km sono stati percorsi da allora. Il
+   * campo resta vuoto perché un valore già scritto va comunque cancellato e nel
+   * frattempo fa comparire l'avviso "non supera l'ultimo valore".
+   */
+  function odoHint() {
+    var el = $('#f-odo-hint');
+    if (!el) return;
+    var prev = prevFillup();
+    var v = currentVehicle();
+    var base = prev ? prev.odo : (v && v.start_odo ? v.start_odo : null);
+    if (base === null || base === undefined) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    var line = prev
+      ? t(prev.date ? 'hint.lastOdo' : 'hint.lastOdoNoDate', { v: km(base), d: dt(prev.date) })
+      : t('hint.startOdo', { v: km(base) });
+    var cur = inDist(numIn(getVal('f-odo')));
+    if (cur !== null && cur > base) line += ' · ' + t('hint.tripSince', { v: km(cur - base) });
+    el.textContent = line;
+    el.hidden = false;
+  }
+
   function fillupWarnings() {
     var w = [];
     var v = currentVehicle();
@@ -894,26 +960,54 @@
     w.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
   }
 
+  /*
+   * Mentre si digita ogni valore intermedio è fuori scala — un prezzo a metà
+   * strada vale 0,17 e il contachilometri una manciata di chilometri — quindi
+   * gli avvisi aspettano mezzo secondo di silenzio invece di lampeggiare a ogni
+   * tasto.
+   */
+  var warnTimer = null;
+  function fillupWarningsSoon() {
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(fillupWarnings, 500);
+  }
+
+  /*
+   * Fra costo totale e prezzo al litro comanda l'ultimo dei due scritto a mano:
+   * l'altro viene ricalcolato a ogni tasto sul volume. Senza questa memoria, chi
+   * scrive prima il prezzo e poi il volume si vede riscrivere il prezzo a
+   * partire dal costo appena dedotto, che a metà digitazione è ancora sbagliato.
+   * Se nessuno dei due è stato scritto in questa sessione del form (tipico della
+   * modifica di un rifornimento già salvato) comanda il costo totale, come nel
+   * resto dell'applicazione.
+   */
+  var moneySource = null;
+
   function syncFillupMoney(source) {
     var liters = numIn(getVal('f-liters'));
     var cost = numIn(getVal('f-cost'));
     var price = numIn(getVal('f-price'));
-    if (source === 'price' && liters && price) setVal('f-cost', (Math.round(price * liters * 100) / 100).toString().replace('.', ','));
-    else if (liters && cost) setVal('f-price', (Math.round(cost / liters * 1000) / 1000).toString().replace('.', ','));
-    else if (liters && price) setVal('f-cost', (Math.round(price * liters * 100) / 100).toString().replace('.', ','));
-    fillupWarnings();
+    if (source === 'cost' || source === 'price') moneySource = source;
+    var driver = moneySource || (cost ? 'cost' : (price ? 'price' : null));
+    if (liters) {
+      if (driver === 'price' && price) maskSet('f-cost', price * liters);
+      else if (driver === 'cost' && cost) maskSet('f-price', cost / liters);
+    }
+    fillupWarningsSoon();
   }
 
   function openFillup(f) {
     if (!state.vehicleId) return toast(t('msg.needVehicle'));
     editingFillup = f || null;
+    moneySource = null;
+    clearTimeout(warnTimer);
     var v = currentVehicle();
     $('#fillup-title').textContent = t(f ? 'title.editFillup' : 'title.newFillup');
     setVal('f-date', f ? f.date : todayISO());
-    setVal('f-odo', f ? round(uDist(f.odo), 1) : (lastOdo() !== null ? round(uDist(lastOdo()), 1) : ''));
-    setVal('f-liters', f ? round(uVol(f.liters), 3) : '');
-    setVal('f-cost', f ? f.total_cost : '');
-    setVal('f-price', f ? round(U.pricePerVolumeFromLiter(f.price_l, UN.system), 3) : '');
+    setVal('f-odo', f ? round(uDist(f.odo), 1) : '');
+    maskSet('f-liters', f ? uVol(f.liters) : null);
+    maskSet('f-cost', f ? f.total_cost : null);
+    maskSet('f-price', f ? U.pricePerVolumeFromLiter(f.price_l, UN.system) : null);
     setVal('f-full', f ? f.full : 1);
     setVal('f-missed', f ? f.missed : 0);
     setVal('f-fuel', f ? f.fuel_type : (v ? v.fuel_type : ''));
@@ -921,6 +1015,7 @@
     setVal('f-location', f ? f.location : '');
     setVal('f-notes', f ? f.notes : '');
     $('#dlg-fillup [data-action="delete"]').hidden = !f;
+    odoHint();
     fillupWarnings();
     $('#dlg-fillup').showModal();
     setTimeout(function () { $('#f-' + (f ? 'date' : 'odo')).focus(); }, 30);
@@ -1162,13 +1257,19 @@
       PREF.set('view', state.view);
       render();
     });
-    ['f-liters', 'f-cost'].forEach(function (id) {
-      document.getElementById(id).addEventListener('input', function () { syncFillupMoney('cost'); });
+    Object.keys(MASKED).forEach(function (id) {
+      var el = document.getElementById(id);
+      var source = { 'f-liters': 'liters', 'f-cost': 'cost', 'f-price': 'price' }[id];
+      el.addEventListener('input', function () {
+        maskField(el);
+        syncFillupMoney(source);
+      });
     });
-    document.getElementById('f-price').addEventListener('input', function () { syncFillupMoney('price'); });
-    ['f-odo', 'f-date'].forEach(function (id) {
-      document.getElementById(id).addEventListener('input', fillupWarnings);
+    document.getElementById('f-odo').addEventListener('input', function () {
+      odoHint();
+      fillupWarningsSoon();
     });
+    document.getElementById('f-date').addEventListener('input', fillupWarningsSoon);
 
     $('#login-form').addEventListener('submit', async function (ev) {
       ev.preventDefault();

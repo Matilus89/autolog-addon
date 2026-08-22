@@ -219,6 +219,11 @@
       'warn.priceRange': 'Prezzo al litro fuori dall\'intervallo plausibile {min}–{max}.',
       'warn.futureDate': 'La data è nel futuro.',
 
+      'hint.lastOdo': 'Ultimo rifornimento: {v} del {d}',
+      'hint.lastOdoNoDate': 'Ultimo valore registrato: {v}',
+      'hint.startOdo': 'Chilometraggio iniziale del veicolo: {v}',
+      'hint.tripSince': '+{v} da allora',
+
       'category.maintenance': 'Manutenzione',
       'category.service': 'Tagliando',
       'category.tyres': 'Gomme',
@@ -444,6 +449,11 @@
       'warn.tooManyLiters': 'Volume ({v}) exceeds the tank capacity ({tank}).',
       'warn.priceRange': 'Price per litre outside the plausible range {min}–{max}.',
       'warn.futureDate': 'The date is in the future.',
+
+      'hint.lastOdo': 'Last fuel-up: {v} on {d}',
+      'hint.lastOdoNoDate': 'Last recorded reading: {v}',
+      'hint.startOdo': 'Vehicle starting odometer: {v}',
+      'hint.tripSince': '+{v} since then',
 
       'category.maintenance': 'Maintenance',
       'category.service': 'Service',

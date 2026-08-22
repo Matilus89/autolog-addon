@@ -217,6 +217,7 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 
 .field { display: flex; flex-direction: column; gap: .2rem; margin: 0 0 .55rem; }
 .field label { font-size: .82rem; color: var(--text-2); }
+.hint { font-size: .78rem; color: var(--text-2); margin-top: .15rem; }
 input[type="text"], input[type="date"], input[type="password"], input[type="number"], select, textarea {
   font: inherit; color: var(--text);
   background: var(--surface-2);

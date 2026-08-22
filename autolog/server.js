@@ -31,7 +31,7 @@ var HASS = require('./lib/hass.js');
 var I18N = require('./public/i18n.js');
 var UNITS = require('./lib/units.js');
 
-var VERSION = '1.4.0';
+var VERSION = '1.5.0';
 
 /* --- configurazione --- */
 var PORT = Number(process.env.PORT || 8099);

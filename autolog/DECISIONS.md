@@ -64,6 +64,32 @@ URLs relative).
   palette, not an inversion.
 - **`[hidden] { display: none !important; }`** is required: without it, classes
   carrying an explicit `display` ignore the `hidden` attribute.
+- **The fuel-up form uses input masks** (`public/mask.js`): two decimals on the
+  total cost, three on the volume and on the price per litre. Digits fill in
+  from the right, the way a card terminal works — `1` becomes `0.001`, `1799`
+  becomes `1.799`. The separator shown is the one of the active language;
+  `numIn()` still reads both.
+- **The volume keeps three decimals** even though a pump shows two: the mask
+  reads the digits in the field, so the field has to hold exactly what it would
+  write back, and fuel-ups imported from Fuelio carry a thousandth of a litre
+  (59.008 L). With two decimals, reopening an imported record would have
+  rounded it.
+- **Between total cost and price per litre, whichever was last typed by hand
+  wins** (remembered in `moneySource`); the other is recomputed on every
+  keystroke in the volume field. Previously the price was always derived from
+  the cost, so typing the price and then the volume overwrote the price with
+  one derived from a still-incomplete cost. Reopening a saved fuel-up leaves
+  neither as hand-typed, and the total cost wins — as it does in the importer
+  and in the database.
+- **The odometer field is not pre-filled** with the last reading: the last
+  odometer and its date are shown under the field instead, together with the
+  distance covered as soon as a value is typed. A pre-filled value had to be
+  cleared on every entry and meanwhile raised the "not higher than the last
+  recorded one" warning. Editing an older fuel-up compares against the one
+  before it, not the latest overall.
+- **Form warnings wait for half a second of silence.** With the masks every
+  intermediate value is out of range — a half-typed price reads as 0.17 — so
+  live warnings would flash on every keystroke.
 - **Charts** compute readable axis ticks at runtime and label only the first,
   last, highest and lowest point. The average is drawn as a dashed line and
   labelled in a legend *outside* the plot — inside, it collided with the value

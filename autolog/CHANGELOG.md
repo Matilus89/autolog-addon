@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.5.0
+
+- **Numeric input masks in the fuel-up form.** Digits fill in from the right,
+  the way a card terminal works: typing `1799` gives a price of `1.799`, and
+  `5901` in the volume field gives `5.901`. On a numeric keyboard the decimal
+  separator often sits behind a secondary key, and a half-typed figure (`1.7`
+  instead of `1.799`) is the easiest mistake to save without noticing. Total
+  cost carries two decimals, volume and price per litre carry three, so a
+  fuel-up imported from Fuelio with a thousandth of a litre is not rounded when
+  you reopen it. The separator shown follows the interface language.
+- **The odometer field is no longer pre-filled** with the last reading. Below it
+  the form now shows the odometer of the previous fuel-up with its date and,
+  as soon as you type, the distance covered since. The pre-filled value had to
+  be cleared every time and meanwhile raised the "not higher than the last
+  recorded one" warning on every new entry. When editing an older fuel-up the
+  reference is the one before it, not the latest overall.
+- Fixed: entering the price first and the volume second used to rewrite the
+  price on every keystroke, deriving it from a total cost that was itself still
+  half-typed — `1.799` ended up as `0.002`. Total cost and price per litre now
+  follow whichever of the two was last typed by hand.
+- Form warnings wait for half a second of silence instead of flashing on every
+  intermediate value.
+
 ## 1.4.0
 
 - **Mosquitto is now declared as a required service** (`services: mqtt:need`).

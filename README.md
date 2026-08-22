@@ -155,11 +155,12 @@ The reasoning behind the non-obvious choices is recorded in
 cd autolog && npm test
 ```
 
-82 tests covering the consumption maths (partial fills, broken chains,
+94 tests covering the consumption maths (partial fills, broken chains,
 weighted average, non-increasing odometer, division by zero), the CSV parser
 (Fuelly in miles and US gallons, Fuelio, Italian CSV, malformed rows), the
-JSON export/import round-trip, MQTT packet encoding including packets split
-across TCP chunks, and the full publisher flow against a stub broker.
+JSON export/import round-trip, the numeric input masks, MQTT packet encoding
+including packets split across TCP chunks, and the full publisher flow against
+a stub broker.
 
 ## Scope
 
