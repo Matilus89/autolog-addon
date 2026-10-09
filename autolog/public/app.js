@@ -392,12 +392,8 @@
     /* mini-grafico consumo */
     var pts = consumptionPoints();
     var chartBox = document.createElement('div');
-    CH.lineChart(chartBox, pts, {
-      unit: UN.consumption, decimals: 2, average: uCons(s.avg_kml),
-      averageLabel: t('chart.average'), seriesName: t('chart.series.consumption'),
-      emptyMessage: t('chart.empty.consumption')
-    });
-    main.appendChild(card(t('chart.consumption', { unit: UN.consumption }), chartBox));
+    CH.lineChart(chartBox, pts, consChartOpts(s));
+    main.appendChild(card(t('chart.consumption', { unit: consChartUnit() }), chartBox));
 
     /* ultimi rifornimenti */
     var last = state.fillups.slice(0, 5);
@@ -408,15 +404,30 @@
     main.appendChild(card(t('section.lastFillups'), ul2));
   };
 
+  /* Metrycznie wykresy spalania pokazują L/100 km (mniej = lepiej);
+     w jednostkach imperialnych zostaje MPG. */
+  function useL100() { return !!U.secondaryConsumption(0, UN.system); }
+  function consChartUnit() { return useL100() ? 'L/100 km' : UN.consumption; }
+  function consChartOpts(s) {
+    var l100 = useL100();
+    return {
+      unit: consChartUnit(), decimals: 2,
+      average: l100 ? (s.avg_l100 !== null && s.avg_l100 !== undefined ? Number(s.avg_l100) : null) : uCons(s.avg_kml),
+      averageLabel: t('chart.average'), seriesName: t('chart.series.consumption'),
+      emptyMessage: t('chart.empty.consumption')
+    };
+  }
+
   function consumptionPoints() {
+    var l100 = useL100();
     return state.fillups
       .filter(function (f) { return f.kml !== null && f.kml !== undefined; })
       .slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.odo - b.odo; })
       .map(function (f) {
-        var sec2 = U.secondaryConsumption(f.l100, UN.system);
+        var v100 = (f.l100 !== null && f.l100 !== undefined) ? Number(f.l100) : 100 / f.kml;
         return {
-          label: dt(f.date), value: uCons(f.kml),
-          tip: dt(f.date) + ' · ' + km(f.odo) + (sec2 ? ' · ' + nfmt(sec2.value, 2) + ' ' + sec2.unit : '')
+          label: dt(f.date), value: l100 ? v100 : uCons(f.kml),
+          tip: dt(f.date) + ' · ' + km(f.odo) + (l100 ? ' · ' + cons(f.kml) : '')
         };
       });
   }
@@ -569,12 +580,8 @@
     var s = state.stats || {};
 
     var b1 = document.createElement('div');
-    CH.lineChart(b1, consumptionPoints(), {
-      unit: UN.consumption, decimals: 2, average: uCons(s.avg_kml),
-      averageLabel: t('chart.average'), seriesName: t('chart.series.consumption'),
-      emptyMessage: t('chart.empty.consumption')
-    });
-    main.appendChild(card(t('chart.consumptionOverTime', { unit: UN.consumption }), b1));
+    CH.lineChart(b1, consumptionPoints(), consChartOpts(s));
+    main.appendChild(card(t('chart.consumptionOverTime', { unit: consChartUnit() }), b1));
 
     var pricePts = state.fillups
       .filter(function (f) { return f.price_l; })
