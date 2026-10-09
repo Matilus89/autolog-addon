@@ -364,8 +364,11 @@
     var perDist = function (v) { return nfmt(U.costPerDistanceFromKm(v, UN.system), 3) + ' ' + CUR() + '/' + UN.distance; };
     var perVol = function (v) { return nfmt(U.pricePerVolumeFromLiter(v, UN.system), 3) + ' ' + CUR() + '/' + UN.volume; };
 
-    stat(t('stat.consumption'), s.avg_kml ? cons(s.avg_kml) : '—',
-         sec ? nfmt(sec.value, 2) + ' ' + sec.unit : t('stat.consumption.hint'));
+    /* Metrycznie: L/100 km pogrubione u góry, km/L mniejszym drukiem pod spodem. */
+    var consMain = s.avg_kml ? cons(s.avg_kml) : '—';
+    var consSub = sec ? nfmt(sec.value, 2) + ' ' + sec.unit : t('stat.consumption.hint');
+    if (sec && s.avg_kml) { var swap = consMain; consMain = consSub; consSub = swap; }
+    stat(t('stat.consumption'), consMain, consSub);
     stat(t('stat.costkm', { unit: UN.distance }), s.eur_km_total ? perDist(s.eur_km_total) : '—',
          s.eur_km_fuel ? t('stat.costkm.fuel', { v: perDist(s.eur_km_fuel) }) : '');
     stat(t('stat.distance'), km(s.total_km),
